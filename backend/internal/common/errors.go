@@ -427,40 +427,22 @@ func (e *InvalidEmailVerificationTokenError) HttpStatusCode() int {
 
 type OidcLoginRequiredError struct{}
 
-func (e *OidcLoginRequiredError) Error() string {
-	return "login_required"
-}
-
-func (e *OidcLoginRequiredError) HttpStatusCode() int {
-	return http.StatusBadRequest
-}
+func (e *OidcLoginRequiredError) Error() string       { return "login_required" }
+func (e *OidcLoginRequiredError) HttpStatusCode() int { return http.StatusBadRequest }
 
 type OidcConsentRequiredError struct{}
 
-func (e *OidcConsentRequiredError) Error() string {
-	return "consent_required"
-}
-
-func (e *OidcConsentRequiredError) HttpStatusCode() int {
-	return http.StatusBadRequest
-}
+func (e *OidcConsentRequiredError) Error() string       { return "consent_required" }
+func (e *OidcConsentRequiredError) HttpStatusCode() int { return http.StatusBadRequest }
 
 type OidcInteractionRequiredError struct{}
 
-func (e *OidcInteractionRequiredError) Error() string {
-	return "interaction_required"
-}
-
-func (e *OidcInteractionRequiredError) HttpStatusCode() int {
-	return http.StatusBadRequest
-}
+func (e *OidcInteractionRequiredError) Error() string       { return "interaction_required" }
+func (e *OidcInteractionRequiredError) HttpStatusCode() int { return http.StatusBadRequest }
 
 type OidcAccountSelectionRequiredError struct{}
 
 func (e *OidcAccountSelectionRequiredError) Error() string {
 	return "account_selection_required"
 }
-
-func (e *OidcAccountSelectionRequiredError) HttpStatusCode() int {
-	return http.StatusBadRequest
-}
+func (e *OidcAccountSelectionRequiredError) HttpStatusCode() int { return http.StatusBadRequest }
