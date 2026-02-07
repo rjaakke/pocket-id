@@ -146,6 +146,22 @@ func (s *OidcService) Authorize(ctx context.Context, input dto.AuthorizeOidcClie
 	hasPromptConsent := contains(promptValues, "consent")
 	hasPromptSelectAccount := contains(promptValues, "select_account")
 
+	// Validate prompt parameter conflicts early before database queries
+	if hasPromptConsent && hasPromptNone {
+		// consent and none together is an error - can't satisfy both
+		return "", "", &common.OidcInteractionRequiredError{}
+	}
+
+	// Handle prompt=select_account early (not supported)
+	if hasPromptSelectAccount {
+		if hasPromptNone {
+			// Can't select account without interaction
+			return "", "", &common.OidcAccountSelectionRequiredError{}
+		}
+		// Account selection not supported - return interaction_required
+		return "", "", &common.OidcInteractionRequiredError{}
+	}
+
 	// If prompt=login is specified, require reauthentication
 	if hasPromptLogin {
 		if input.ReauthenticationToken == "" {
@@ -198,25 +214,11 @@ func (s *OidcService) Authorize(ctx context.Context, input dto.AuthorizeOidcClie
 	}
 
 	// Handle prompt=consent - always require consent display
-	if hasPromptConsent && hasPromptNone {
-		// consent and none together is an error - can't satisfy both
-		return "", "", &common.OidcInteractionRequiredError{}
-	}
 	if hasPromptConsent {
 		// Always require consent to be shown for this request
 		// This should be handled by frontend showing the consent UI
 		// Backend will always create/update authorization
 		hasAlreadyAuthorized = false
-	}
-
-	// Handle prompt=select_account
-	if hasPromptSelectAccount {
-		if hasPromptNone {
-			// Can't select account without interaction
-			return "", "", &common.OidcAccountSelectionRequiredError{}
-		}
-		// Account selection not supported - return interaction_required
-		return "", "", &common.OidcInteractionRequiredError{}
 	}
 
 	// Handle prompt=none - check if consent would be required

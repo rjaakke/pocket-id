@@ -115,10 +115,15 @@ func (oc *OidcController) authorizeHandler(c *gin.Context) {
 
 // isOidcPromptError checks if an error is a prompt-related OIDC error that should trigger a redirect
 func isOidcPromptError(err error) bool {
-	return errors.Is(err, &common.OidcLoginRequiredError{}) ||
-		errors.Is(err, &common.OidcConsentRequiredError{}) ||
-		errors.Is(err, &common.OidcInteractionRequiredError{}) ||
-		errors.Is(err, &common.OidcAccountSelectionRequiredError{})
+	var loginReq *common.OidcLoginRequiredError
+	var consentReq *common.OidcConsentRequiredError
+	var interactionReq *common.OidcInteractionRequiredError
+	var accountSelectionReq *common.OidcAccountSelectionRequiredError
+
+	return errors.As(err, &loginReq) ||
+		errors.As(err, &consentReq) ||
+		errors.As(err, &interactionReq) ||
+		errors.As(err, &accountSelectionReq)
 }
 
 // authorizationConfirmationRequiredHandler godoc

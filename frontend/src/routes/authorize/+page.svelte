@@ -30,11 +30,12 @@
 	let authorizationConfirmed = $state(false);
 	let userSignedInAt: Date | undefined;
 
-	onMount(() => {
-		// Parse prompt parameter (space-delimited per OIDC spec)
-		const promptValues = prompt ? prompt.split(' ') : [];
-		const hasPromptNone = promptValues.includes('none');
+	// Parse prompt parameter once (space-delimited per OIDC spec)
+	const promptValues = prompt ? prompt.split(' ') : [];
+	const hasPromptNone = promptValues.includes('none');
+	const hasPromptConsent = promptValues.includes('consent');
 
+	onMount(() => {
 		// If prompt=none and user is not signed in, redirect immediately with login_required
 		if (hasPromptNone && !$userStore) {
 			redirectWithError('login_required');
@@ -59,11 +60,6 @@
 				userStore.setUser(user);
 				userSignedInAt = new Date();
 			}
-
-			// Parse prompt parameter
-			const promptValues = prompt ? prompt.split(' ') : [];
-			const hasPromptNone = promptValues.includes('none');
-			const hasPromptConsent = promptValues.includes('consent');
 
 			if (!authorizationConfirmed) {
 				authorizationRequired = await oidService.isAuthorizationRequired(client!.id, scope);
