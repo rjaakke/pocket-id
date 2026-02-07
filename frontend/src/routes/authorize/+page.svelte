@@ -20,7 +20,7 @@
 	const oidService = new OidcService();
 
 	let { data }: PageProps = $props();
-	let { client, scope, callbackURL, nonce, codeChallenge, codeChallengeMethod, authorizeState } =
+	let { client, scope, callbackURL, nonce, codeChallenge, codeChallengeMethod, authorizeState, prompt } =
 		data;
 
 	let isLoading = $state(false);
@@ -31,6 +31,16 @@
 	let userSignedInAt: Date | undefined;
 
 	onMount(() => {
+		// Parse prompt parameter (space-delimited per OIDC spec)
+		const promptValues = prompt ? prompt.split(' ') : [];
+		const hasPromptNone = promptValues.includes('none');
+
+		// If prompt=none and user is not signed in, redirect immediately with login_required
+		if (hasPromptNone && !$userStore) {
+			redirectWithError('login_required');
+			return;
+		}
+
 		if ($userStore) {
 			authorize();
 		}
@@ -50,8 +60,25 @@
 				userSignedInAt = new Date();
 			}
 
+			// Parse prompt parameter
+			const promptValues = prompt ? prompt.split(' ') : [];
+			const hasPromptNone = promptValues.includes('none');
+			const hasPromptConsent = promptValues.includes('consent');
+
 			if (!authorizationConfirmed) {
 				authorizationRequired = await oidService.isAuthorizationRequired(client!.id, scope);
+				
+				// If prompt=consent, always show consent UI
+				if (hasPromptConsent) {
+					authorizationRequired = true;
+				}
+
+				// If prompt=none and consent required, redirect with error
+				if (hasPromptNone && authorizationRequired) {
+					redirectWithError('consent_required');
+					return;
+				}
+
 				if (authorizationRequired) {
 					isLoading = false;
 					authorizationConfirmed = true;
@@ -71,7 +98,7 @@
 				reauthToken = await webauthnService.reauthenticate(authResponse);
 			}
 
-			await oidService
+			const result = await oidService
 				.authorize(
 					client!.id,
 					scope,
@@ -79,15 +106,30 @@
 					nonce,
 					codeChallenge,
 					codeChallengeMethod,
-					reauthToken
-				)
-				.then(async ({ code, callbackURL, issuer }) => {
-					onSuccess(code, callbackURL, issuer);
-				});
+					reauthToken,
+					prompt
+				);
+
+			// Check if backend returned a redirect error
+			if (result.requiresRedirect && result.error) {
+				redirectWithError(result.error);
+				return;
+			}
+
+			onSuccess(result.code!, result.callbackURL, result.issuer!);
 		} catch (e) {
 			errorMessage = getWebauthnErrorMessage(e);
 			isLoading = false;
 		}
+	}
+
+	function redirectWithError(error: string) {
+		const redirectURL = new URL(callbackURL);
+		redirectURL.searchParams.append('error', error);
+		if (authorizeState) {
+			redirectURL.searchParams.append('state', authorizeState);
+		}
+		window.location.href = redirectURL.toString();
 	}
 
 	function onSuccess(code: string, callbackURL: string, issuer: string) {
