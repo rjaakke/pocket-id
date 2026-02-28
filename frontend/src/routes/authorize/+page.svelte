@@ -34,8 +34,15 @@
 	const promptValues = prompt ? prompt.split(' ') : [];
 	const hasPromptNone = promptValues.includes('none');
 	const hasPromptConsent = promptValues.includes('consent');
+	const hasPromptLogin = promptValues.includes('login');
 
 	onMount(() => {
+		// Conflicting prompt values - can't satisfy both none and consent
+		if (hasPromptNone && hasPromptConsent) {
+			redirectWithError('interaction_required');
+			return;
+		}
+
 		// If prompt=none and user is not signed in, redirect immediately with login_required
 		if (hasPromptNone && !$userStore) {
 			redirectWithError('login_required');
@@ -83,7 +90,7 @@
 			}
 
 			let reauthToken: string | undefined;
-			if (client?.requiresReauthentication) {
+			if (client?.requiresReauthentication || hasPromptLogin) {
 				let authResponse;
 				const signedInRecently =
 					userSignedInAt && userSignedInAt.getTime() > Date.now() - 60 * 1000;
@@ -108,7 +115,12 @@
 
 			// Check if backend returned a redirect error
 			if (result.requiresRedirect && result.error) {
-				redirectWithError(result.error);
+				if (hasPromptNone) {
+					redirectWithError(result.error);
+				} else {
+					errorMessage = result.error;
+					isLoading = false;
+				}
 				return;
 			}
 
