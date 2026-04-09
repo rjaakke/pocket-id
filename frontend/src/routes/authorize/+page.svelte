@@ -102,17 +102,16 @@
 				reauthToken = await webauthnService.reauthenticate(authResponse);
 			}
 
-			const result = await oidService
-				.authorize(
-					client!.id,
-					scope,
-					callbackURL,
-					nonce,
-					codeChallenge,
-					codeChallengeMethod,
-					reauthToken,
-					prompt
-				);
+			const result = await oidService.authorize(
+				client!.id,
+				scope,
+				callbackURL,
+				nonce,
+				codeChallenge,
+				codeChallengeMethod,
+				reauthToken,
+				prompt
+			);
 
 			// Check if backend returned a redirect error
 			if (result.requiresRedirect && result.error) {
@@ -132,19 +131,12 @@
 		}
 	}
 
-	function isAllowedRedirectURL(url: string): boolean {
-		try {
-			const parsed = new URL(url);
-			return parsed.protocol === 'https:' || parsed.protocol === 'http:';
-		} catch {
-			return false;
-		}
-	}
-
 	function redirectWithError(error: string) {
-		if (!isAllowedRedirectURL(callbackURL)) return;
-
 		const redirectURL = new URL(callbackURL);
+		if (redirectURL.protocol == 'javascript:' || redirectURL.protocol == 'data:') {
+			throw new Error('Invalid redirect URL protocol');
+		}
+
 		redirectURL.searchParams.append('error', error);
 		if (authorizeState) {
 			redirectURL.searchParams.append('state', authorizeState);
@@ -153,15 +145,17 @@
 	}
 
 	function onSuccess(code: string, callbackURL: string, issuer: string) {
-		if (!isAllowedRedirectURL(callbackURL)) return;
+		const redirectURL = new URL(callbackURL);
+		if (redirectURL.protocol == 'javascript:' || redirectURL.protocol == 'data:') {
+			throw new Error('Invalid redirect URL protocol');
+		}
+
+		redirectURL.searchParams.append('code', code);
+		redirectURL.searchParams.append('state', authorizeState);
+		redirectURL.searchParams.append('iss', issuer);
 
 		success = true;
 		setTimeout(() => {
-			const redirectURL = new URL(callbackURL);
-			redirectURL.searchParams.append('code', code);
-			redirectURL.searchParams.append('state', authorizeState);
-			redirectURL.searchParams.append('iss', issuer);
-
 			window.location.href = redirectURL.toString();
 		}, 1000);
 	}
