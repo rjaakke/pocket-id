@@ -195,24 +195,15 @@ func (s *OidcService) Authorize(ctx context.Context, input dto.AuthorizeOidcClie
 		return "", "", &common.OidcAccessDeniedError{}
 	}
 
-	// Check if authorization is required (consent)
-	hasAlreadyAuthorized, err := s.hasAuthorizedClientInternal(ctx, input.ClientID, userID, input.Scope, tx)
-	if err != nil {
-		return "", "", err
-	}
-
-	// Handle prompt=consent - always require consent display
-	if hasPromptConsent {
-		// Always require consent to be shown for this request
-		// This should be handled by frontend showing the consent UI
-		// Backend will always create/update authorization
-		hasAlreadyAuthorized = false
-	}
-
-	// Handle prompt=none - check if consent would be required
-	if hasPromptNone && !hasAlreadyAuthorized {
-		// User needs to consent but prompt=none means no UI
-		return "", "", &common.OidcConsentRequiredError{}
+	// Handle prompt=none - if consent would be required, we can't show UI
+	if hasPromptNone {
+		hasAlreadyAuthorized, err := s.hasAuthorizedClientInternal(ctx, input.ClientID, userID, input.Scope, tx)
+		if err != nil {
+			return "", "", err
+		}
+		if !hasAlreadyAuthorized {
+			return "", "", &common.OidcConsentRequiredError{}
+		}
 	}
 
 	hasAlreadyAuthorizedClient, err := s.createAuthorizedClientInternal(ctx, userID, input.ClientID, input.Scope, tx)
