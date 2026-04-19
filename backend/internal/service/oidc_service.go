@@ -168,19 +168,12 @@ func (s *OidcService) Authorize(ctx context.Context, input dto.AuthorizeOidcClie
 		return "", "", &common.OidcInteractionRequiredError{}
 	}
 
-	// If prompt=login is specified, require reauthentication
-	if hasPromptLogin {
+	// If prompt=login is specified or the client requires reauthentication, check the reauthentication token
+	if hasPromptLogin || client.RequiresReauthentication {
 		if input.ReauthenticationToken == "" {
 			return "", "", &common.ReauthenticationRequiredError{}
 		}
-		err = s.webAuthnService.ConsumeReauthenticationToken(ctx, tx, input.ReauthenticationToken, userID)
-		if err != nil {
-			return "", "", err
-		}
-	} else if client.RequiresReauthentication {
-		if input.ReauthenticationToken == "" {
-			return "", "", &common.ReauthenticationRequiredError{}
-		}
+
 		err = s.webAuthnService.ConsumeReauthenticationToken(ctx, tx, input.ReauthenticationToken, userID)
 		if err != nil {
 			return "", "", err
